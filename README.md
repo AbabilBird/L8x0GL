@@ -11,6 +11,7 @@ removable eSIM over MBIM.
 
 - `l8x0gl-mbim`: backend manager for Fibocom L850-GL/L860-GL MBIM.
 - `lpac-mbim`: patched lpac 2.3.0 package with MBIM removable eSIM fixes. It installs `/usr/bin/lpac-mbim` and a compatibility symlink `/usr/bin/lpac`.
+- `luci-app-l8x0gl`: modern LuCI JavaScript GUI for status, config, eSIM and logs.
 
 ## Design goals
 
@@ -34,6 +35,7 @@ package tree, then run:
 make defconfig
 make package/l8x0gl-mbim/compile V=s
 make package/lpac-mbim/compile V=s
+make package/luci-app-l8x0gl/compile V=s
 ```
 
 ## Runtime commands

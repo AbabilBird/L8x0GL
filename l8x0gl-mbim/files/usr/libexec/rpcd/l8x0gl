@@ -1,0 +1,49 @@
+#!/bin/sh
+. /usr/share/l8x0gl/rpc.sh
+
+read_input() {
+	cat >/tmp/l8x0gl.rpc.input
+}
+
+json_get() {
+	jsonfilter -s "$(cat /tmp/l8x0gl.rpc.input 2>/dev/null)" -e "@$1" 2>/dev/null
+}
+
+case "$1" in
+	list)
+		cat <<'JSON'
+{"status":{},"config":{},"set_config":{"enabled":"String","interface":"String","apn":"String","username":"String","password":"String","auth":"String","iptype":"String","auto_connect":"String","monitor_interval":"String","boot_debounce":"String","allow_hard_reset":"String","use_proxy":"String","esim_enabled":"String","reconnect_on_switch":"String"},"action":{"name":"String"},"esim":{"action":"String","arg1":"String","arg2":"String","arg3":"String"},"logs":{}}
+JSON
+		;;
+	call)
+		method="$2"
+		read_input
+		case "$method" in
+			status) status_json ;;
+			config) config_json ;;
+			set_config)
+				set_config \
+					enabled "$(json_get .enabled)" \
+					interface "$(json_get .interface)" \
+					apn "$(json_get .apn)" \
+					username "$(json_get .username)" \
+					password "$(json_get .password)" \
+					auth "$(json_get .auth)" \
+					iptype "$(json_get .iptype)" \
+					auto_connect "$(json_get .auto_connect)" \
+					monitor_interval "$(json_get .monitor_interval)" \
+					boot_debounce "$(json_get .boot_debounce)" \
+					allow_hard_reset "$(json_get .allow_hard_reset)" \
+					use_proxy "$(json_get .use_proxy)" \
+					esim_enabled "$(json_get .esim_enabled)" \
+					reconnect_on_switch "$(json_get .reconnect_on_switch)"
+				;;
+			action) run_action "$(json_get .name)" ;;
+			esim)
+				esim_action "$(json_get .action)" "$(json_get .arg1)" "$(json_get .arg2)" "$(json_get .arg3)" >/tmp/l8x0gl.esim.out 2>&1
+				rc="$?"; out="$(cat /tmp/l8x0gl.esim.out)"; printf '{"ok":%s,"output":"%s"}\n' "$([ "$rc" = 0 ] && echo true || echo false)" "$(json_escape "$out")"
+				;;
+			logs) logs_json ;;
+		esac
+		;;
+esac

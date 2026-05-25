@@ -1,0 +1,45 @@
+{
+  "admin/network/l8x0gl": {
+    "title": "L8x0GL Modem",
+    "order": 60,
+    "action": {
+      "type": "view",
+      "path": "l8x0gl/status"
+    },
+    "depends": {
+      "acl": [ "luci-app-l8x0gl" ]
+    }
+  },
+  "admin/network/l8x0gl/status": {
+    "title": "Status",
+    "order": 10,
+    "action": {
+      "type": "view",
+      "path": "l8x0gl/status"
+    }
+  },
+  "admin/network/l8x0gl/config": {
+    "title": "Config",
+    "order": 20,
+    "action": {
+      "type": "view",
+      "path": "l8x0gl/config"
+    }
+  },
+  "admin/network/l8x0gl/esim": {
+    "title": "eSIM",
+    "order": 30,
+    "action": {
+      "type": "view",
+      "path": "l8x0gl/esim"
+    }
+  },
+  "admin/network/l8x0gl/logs": {
+    "title": "Logs",
+    "order": 40,
+    "action": {
+      "type": "view",
+      "path": "l8x0gl/logs"
+    }
+  }
+}

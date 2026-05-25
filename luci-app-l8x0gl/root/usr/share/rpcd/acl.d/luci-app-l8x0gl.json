@@ -1,0 +1,19 @@
+{
+  "luci-app-l8x0gl": {
+    "description": "Grant access to L8x0GL modem manager",
+    "read": {
+      "ubus": {
+        "l8x0gl": [ "status", "config", "logs" ],
+        "uci": [ "get" ]
+      },
+      "uci": [ "l8x0gl", "lpac", "network" ]
+    },
+    "write": {
+      "ubus": {
+        "l8x0gl": [ "set_config", "action", "esim" ],
+        "uci": [ "set", "commit", "apply" ]
+      },
+      "uci": [ "l8x0gl", "lpac", "network" ]
+    }
+  }
+}
