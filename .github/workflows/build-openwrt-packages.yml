@@ -117,10 +117,12 @@ jobs:
           cd "$SDK_PATH"
           OUT="$GITHUB_WORKSPACE/artifacts/${{ matrix.openwrt.name }}-${{ matrix.target.name }}"
           mkdir -p "$OUT"
-          find bin/packages -type f \( -name '*l8x0gl*.ipk' -o -name '*lpac-mbim*.ipk' \) -exec cp -v {} "$OUT/" \; || true
+          find bin/packages -type f \( -name '*l8x0gl*.ipk' -o -name '*lpac-mbim*.ipk' -o -name '*l8x0gl*.apk' -o -name '*lpac-mbim*.apk' \) -exec cp -v {} "$OUT/" \; || true
           if [ -d logs ]; then
             find logs -type f \( -name '*.txt' -o -name '*.log' \) -exec cp --parents {} "$OUT/" \; || true
           fi
+          echo "Collected files:"
+          find "$OUT" -type f -maxdepth 4 -print | sort
 
       - name: Upload artifacts
         if: always()
