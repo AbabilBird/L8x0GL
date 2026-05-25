@@ -1,0 +1,15 @@
+config LPAC_MBIM_ENABLE_PCSC
+	bool "Build PC/SC backend"
+	default n
+
+config LPAC_MBIM_ENABLE_AT
+	bool "Build AT backend"
+	default n
+
+config LPAC_MBIM_ENABLE_UQMI
+	bool "Build uqmi backend"
+	default n
+
+config LPAC_MBIM_ENABLE_MBIM
+	bool "Build MBIM backend"
+	default y

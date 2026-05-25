@@ -1,0 +1,8 @@
+#!/bin/sh
+[ "$ACTION" = "add" ] || exit 0
+case "$INTERFACE" in
+	wwan*|usb*)
+		logger -t l8x0gl-hotplug "net $ACTION iface=$INTERFACE; refreshing detect"
+		/usr/sbin/l8x0glctl detect >/dev/null 2>&1 || true
+		;;
+esac

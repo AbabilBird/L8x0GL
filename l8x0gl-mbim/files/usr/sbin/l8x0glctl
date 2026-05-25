@@ -1,0 +1,67 @@
+#!/bin/sh
+
+cmd="$1"
+shift 2>/dev/null || true
+
+usage() {
+	cat <<USAGE
+Usage: l8x0glctl <command>
+Commands:
+  detect          Detect L850-GL/L860-GL MBIM devices
+  status          Show current state
+  setup-network   Configure OpenWrt network interface
+  connect         Bring up configured MBIM interface
+  disconnect      Bring down configured MBIM interface
+  reconnect       Bounce configured MBIM interface
+  monitor-once    Run one monitor/recovery pass
+  recover         Run soft recovery
+  esim <args...>  Run lpac-mbim through L8x0GL wrapper
+  esim-switch <args...> Run lpac-mbim then reconnect/check MBIM
+USAGE
+}
+
+case "$cmd" in
+	detect)
+		/usr/share/l8x0gl/detect.sh "$@"
+		;;
+	status)
+		/usr/share/l8x0gl/status.sh "$@"
+		;;
+	setup-network)
+		. /usr/share/l8x0gl/netifd.sh
+		setup_network
+		;;
+	connect)
+		. /usr/share/l8x0gl/netifd.sh
+		ifup_l8x0gl
+		;;
+	disconnect)
+		. /usr/share/l8x0gl/netifd.sh
+		ifdown_l8x0gl
+		;;
+	reconnect)
+		. /usr/share/l8x0gl/recover.sh
+		recover_soft
+		;;
+	monitor-once)
+		/usr/share/l8x0gl/monitor.sh once
+		;;
+	recover)
+		. /usr/share/l8x0gl/recover.sh
+		recover_soft
+		;;
+	esim)
+		. /usr/share/l8x0gl/lib.sh
+		. /usr/share/l8x0gl/esim.sh
+		with_lock "$(uci_get esim operation_lock /var/lock/l8x0gl-mbim.lock)" lpac_run "$@"
+		;;
+	esim-switch)
+		. /usr/share/l8x0gl/lib.sh
+		. /usr/share/l8x0gl/esim.sh
+		with_lock "$(uci_get esim operation_lock /var/lock/l8x0gl-mbim.lock)" lpac_switch "$@"
+		;;
+	*)
+		usage
+		exit 1
+		;;
+esac

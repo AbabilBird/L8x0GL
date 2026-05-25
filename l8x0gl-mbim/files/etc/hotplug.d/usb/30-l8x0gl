@@ -1,0 +1,8 @@
+#!/bin/sh
+[ "$ACTION" = "add" ] || [ "$ACTION" = "remove" ] || exit 0
+case "$PRODUCT" in
+	2cb7/0007/*|8087/095a/*)
+		logger -t l8x0gl-hotplug "USB $ACTION product=$PRODUCT; scheduling detect"
+		( sleep 8; /usr/sbin/l8x0glctl detect >/dev/null 2>&1; /usr/sbin/l8x0glctl setup-network >/dev/null 2>&1 ) &
+		;;
+esac

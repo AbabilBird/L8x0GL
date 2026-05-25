@@ -1,0 +1,8 @@
+#!/bin/sh
+[ "$ACTION" = "add" ] || exit 0
+case "$DEVNAME" in
+	cdc-wdm*)
+		logger -t l8x0gl-hotplug "usbmisc $ACTION dev=$DEVNAME; scheduling detect"
+		( sleep 3; /usr/sbin/l8x0glctl detect >/dev/null 2>&1; /usr/sbin/l8x0glctl setup-network >/dev/null 2>&1 ) &
+		;;
+esac

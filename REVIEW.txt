@@ -1,0 +1,28 @@
+L8x0GL backend skeleton review
+
+Scope completed:
+- Backend-only OpenWrt package skeleton; LuCI intentionally postponed.
+- l8x0gl-mbim package for Fibocom L850-GL/L860-GL MBIM handling.
+- lpac-mbim package with QModem patched lpac MBIM APDU patches.
+- Early mbim-proxy procd service for shared MBIM access.
+- UCI configs for l8x0gl and lpac.
+- Hotplug debounce for L850-GL USB re-enumeration behavior.
+- CLI entrypoint l8x0glctl.
+- Auto-detect skeleton for /dev/cdc-wdmX, wwan*/usb* interface, and AT port.
+- Netifd proto mbim setup helper.
+- eSIM bridge that runs lpac-mbim through proxy and lock.
+- Basic monitor/recovery skeleton.
+
+Important design choices:
+- Package name for patched lpac is lpac-mbim, not lpac, to avoid replacing OpenWrt's normal lpac package silently.
+- /usr/bin/lpac is provided as a symlink to /usr/bin/lpac-mbim for compatibility.
+- Non-disruptive eSIM operations should use: l8x0glctl esim <lpac args>
+- Enable/switch profile operations should use: l8x0glctl esim-switch <lpac args>
+- mbim-proxy is started early and left idle when unused.
+- Hard modem reset is disabled by default.
+
+Known items requiring real OpenWrt build/runtime validation:
+- Confirm package names mbim-utils/libmbim/umbim on the exact OpenWrt 24.10/25.x feed.
+- Confirm netifd mbim option names for pdptype/auth on the target OpenWrt version.
+- Confirm whether umbim in target build has proxy support; current design does not require it for lpac-mbim but all-through-proxy mode would.
+- AT response reading is not implemented in this skeleton; safe mode switch can be improved later with atinout or ubus-at.

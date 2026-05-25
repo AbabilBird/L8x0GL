@@ -1,0 +1,65 @@
+#!/bin/sh
+
+. /lib/config/uci.sh
+
+uci_get_lpac() {
+	local section="$1"
+	local option="$2"
+	local default="$3"
+	local value
+	value="$(uci -q get "lpac.$section.$option" 2>/dev/null)" || value=""
+	[ -n "$value" ] && printf '%s\n' "$value" || printf '%s\n' "$default"
+}
+
+auto_mbim_device() {
+	local dev
+	dev="${LPAC_APDU_MBIM_DEVICE:-}"
+	[ -n "$dev" ] && [ "$dev" != "auto" ] && { printf '%s\n' "$dev"; return 0; }
+	if [ -x /usr/sbin/l8x0glctl ]; then
+		/usr/sbin/l8x0glctl detect >/dev/null 2>&1 || true
+		dev="$(/usr/sbin/l8x0glctl status 2>/dev/null | sed -n 's/^mbim_device=//p' | head -n 1)"
+		[ -n "$dev" ] && { printf '%s\n' "$dev"; return 0; }
+	fi
+	for dev in /dev/cdc-wdm*; do
+		[ -e "$dev" ] && { printf '%s\n' "$dev"; return 0; }
+	done
+	printf '%s\n' '/dev/cdc-wdm0'
+}
+
+APDU_BACKEND="$(uci_get_lpac global apdu_backend mbim)"
+APDU_DEBUG="$(uci_get_lpac global apdu_debug 0)"
+HTTP_BACKEND="$(uci_get_lpac global http_backend curl)"
+HTTP_DEBUG="$(uci_get_lpac global http_debug 0)"
+CUSTOM_ISD_R_AID="$(uci_get_lpac global custom_isd_r_aid A0000005591010FFFFFFFF8900000100)"
+
+export LPAC_HTTP="$HTTP_BACKEND"
+[ "$HTTP_DEBUG" = "1" ] && export LIBEUICC_DEBUG_HTTP=1
+
+export LPAC_APDU="$APDU_BACKEND"
+[ "$APDU_DEBUG" = "1" ] && export LIBEUICC_DEBUG_APDU=1
+
+case "$APDU_BACKEND" in
+	mbim)
+		MBIM_DEVICE="$(uci_get_lpac mbim device auto)"
+		[ "$MBIM_DEVICE" = "auto" ] && MBIM_DEVICE="$(auto_mbim_device)"
+		MBIM_PROXY="$(uci_get_lpac mbim proxy 1)"
+		MBIM_SKIP_SLOT_MAPPING="$(uci_get_lpac mbim skip_slot_mapping 1)"
+		export LPAC_APDU_MBIM_DEVICE="$MBIM_DEVICE"
+		export LPAC_APDU_MBIM_USE_PROXY="$MBIM_PROXY"
+		export LPAC_APDU_MBIM_SKIP_SLOT_MAPPING="$MBIM_SKIP_SLOT_MAPPING"
+		;;
+	at)
+		AT_DEVICE="$(uci_get_lpac at device auto)"
+		export AT_DEVICE="$AT_DEVICE"
+		export AT_DEBUG="$(uci_get_lpac at debug 0)"
+		;;
+	uqmi)
+		UQMI_DEV="$(uci_get_lpac uqmi device auto)"
+		export LPAC_QMI_DEV="$UQMI_DEV"
+		export LPAC_QMI_DEBUG="$(uci_get_lpac uqmi debug 0)"
+		;;
+esac
+
+export LPAC_CUSTOM_ISD_R_AID="$CUSTOM_ISD_R_AID"
+
+exec /usr/lib/lpac-mbim/lpac "$@"
