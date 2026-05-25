@@ -1,0 +1,129 @@
+name: Build OpenWrt packages
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: ${{ matrix.openwrt.name }} / ${{ matrix.arch.name }}
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        openwrt:
+          - name: openwrt-24.10
+            repo_branch: openwrt-24.10
+          - name: openwrt-main-25.x
+            repo_branch: main
+        arch:
+          - name: aarch64_generic
+            config_target: armsr
+            config_subtarget: armv8
+            config_target_name: aarch64_generic
+          - name: arm_cortex-a7_neon-vfpv4
+            config_target: sunxi
+            config_subtarget: cortexa7
+            config_target_name: arm_cortex-a7_neon-vfpv4
+
+    steps:
+      - name: Checkout L8x0GL feed
+        uses: actions/checkout@v4
+        with:
+          path: L8x0GL
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential clang flex bison g++ gawk gcc-multilib g++-multilib \
+            gettext git libncurses5-dev libssl-dev python3-distutils python3-setuptools \
+            rsync swig unzip zlib1g-dev file wget curl subversion ccache \
+            libelf-dev libfuse-dev ecj fastjar java-propose-classpath
+
+      - name: Cache downloads
+        uses: actions/cache@v4
+        with:
+          path: |
+            openwrt/dl
+            openwrt/staging_dir/host
+            openwrt/staging_dir/hostpkg
+          key: openwrt-${{ matrix.openwrt.name }}-${{ matrix.arch.name }}-${{ hashFiles('L8x0GL/**/*.mk', 'L8x0GL/**/*.patch', 'L8x0GL/**/*.sh', 'L8x0GL/**/*.js') }}
+          restore-keys: |
+            openwrt-${{ matrix.openwrt.name }}-${{ matrix.arch.name }}-
+
+      - name: Clone OpenWrt buildroot
+        run: |
+          git clone --depth 1 --branch "${{ matrix.openwrt.repo_branch }}" https://github.com/openwrt/openwrt.git openwrt
+
+      - name: Register L8x0GL feed
+        run: |
+          cd openwrt
+          echo "src-link l8x0gl $GITHUB_WORKSPACE/L8x0GL" >> feeds.conf.default
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+          ./scripts/feeds install -p l8x0gl l8x0gl-mbim lpac-mbim luci-app-l8x0gl
+
+      - name: Configure target and packages
+        run: |
+          cd openwrt
+          cat > .config <<CONFIG
+          CONFIG_TARGET_${{ matrix.arch.config_target }}=y
+          CONFIG_TARGET_${{ matrix.arch.config_target }}_${{ matrix.arch.config_subtarget }}=y
+          CONFIG_PACKAGE_l8x0gl-mbim=m
+          CONFIG_PACKAGE_lpac-mbim=m
+          CONFIG_PACKAGE_luci-app-l8x0gl=m
+          CONFIG_LPAC_MBIM_ENABLE_MBIM=y
+          # CONFIG_LPAC_MBIM_ENABLE_PCSC is not set
+          # CONFIG_LPAC_MBIM_ENABLE_AT is not set
+          # CONFIG_LPAC_MBIM_ENABLE_UQMI is not set
+          CONFIG_DEVEL=y
+          CONFIG_CCACHE=y
+          CONFIG_BUILD_LOG=y
+          CONFIG_AUTOREMOVE=y
+          CONFIG_ALL_NONSHARED=n
+          CONFIG_ALL_KMODS=n
+          CONFIG_ALL=n
+          CONFIG_SIGNED_PACKAGES=n
+          CONFIG
+          sed -i 's/^          //' .config
+          make defconfig
+          grep -E 'CONFIG_TARGET_|CONFIG_PACKAGE_(l8x0gl|lpac-mbim|luci-app-l8x0gl)|CONFIG_LPAC_MBIM' .config || true
+
+      - name: Download package sources
+        run: |
+          cd openwrt
+          make download -j$(nproc) V=s
+
+      - name: Compile l8x0gl-mbim
+        run: |
+          cd openwrt
+          make package/l8x0gl-mbim/compile -j$(nproc) V=s
+
+      - name: Compile lpac-mbim
+        run: |
+          cd openwrt
+          make package/lpac-mbim/compile -j$(nproc) V=s
+
+      - name: Compile luci-app-l8x0gl
+        run: |
+          cd openwrt
+          make package/luci-app-l8x0gl/compile -j$(nproc) V=s
+
+      - name: Collect artifacts
+        if: always()
+        run: |
+          cd openwrt
+          mkdir -p "$GITHUB_WORKSPACE/artifacts/${{ matrix.openwrt.name }}-${{ matrix.arch.name }}"
+          find bin/packages -type f \( -name '*l8x0gl*.ipk' -o -name '*lpac-mbim*.ipk' \) -exec cp -v {} "$GITHUB_WORKSPACE/artifacts/${{ matrix.openwrt.name }}-${{ matrix.arch.name }}/" \; || true
+          find logs -type f -name '*.txt' -o -name '*.log' 2>/dev/null | xargs -r -I{} cp --parents {} "$GITHUB_WORKSPACE/artifacts/${{ matrix.openwrt.name }}-${{ matrix.arch.name }}/" || true
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: packages-${{ matrix.openwrt.name }}-${{ matrix.arch.name }}
+          path: artifacts/${{ matrix.openwrt.name }}-${{ matrix.arch.name }}
+          if-no-files-found: warn
